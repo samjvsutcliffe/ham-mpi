@@ -8,8 +8,10 @@
 
 module load gcc
 module load aocl
+module load openmpi
 
 echo "Running code"
 rm output/*
 
-sbcl --dynamic-space-size 64000  --disable-debugger --load "template.lisp" --quit
+sbcl --dynamic-space-size 64000  --disable-debugger --load "build_step.lisp" --quit
+
