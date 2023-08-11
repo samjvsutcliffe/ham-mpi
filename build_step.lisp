@@ -1,10 +1,10 @@
 ;(ql:quickload :cl-mpm-worker)
-(ql:quickload "cl-mpm/examples/slump")
+;(ql:quickload "cl-mpm/examples/slump")
 (require 'cl-mpm-worker)
 
-(defun cl-mpm-worker::primary-main ()
-  (format t "Running MPI with ~D jobs~%"  (cl-mpi::mpi-comm-size))
-  (cl-mpm/examples/slump::mpi-run (cl-mpi::mpi-comm-size)))
+;(defun cl-mpm-worker::primary-main ()
+;  (format t "Running MPI with ~D jobs~%"  (cl-mpi::mpi-comm-size))
+;  (cl-mpm/examples/slump::mpi-run (cl-mpi::mpi-comm-size)))
 
 
 ;(build)

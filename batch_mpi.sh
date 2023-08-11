@@ -21,6 +21,6 @@ sbcl --dynamic-space-size 4000  --disable-debugger --load "build_step.lisp" --qu
 
 cp ~/quicklisp/local-projects/cl-mpm-worker/mpi-worker ./
 
-mpirun ./mpi-worker
+mpirun -n 4 ./mpi-worker
 #mpirun ~/quicklisp/local-projects/cl-mpm-worker/mpi-worker
 
