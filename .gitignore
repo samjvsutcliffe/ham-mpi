@@ -18,3 +18,6 @@
 mpi-worker
 *.out
 lfarm_connections
+output/*
+outfiles/*
+*.dat
