@@ -9,40 +9,6 @@
 (declaim (optimize (debug 3) (safety 3) (speed 0)))
 
 
-(defun max-v-sum (mp)
-  (with-accessors ((vel cl-mpm/particle:mp-velocity))
-      mp
-    (magicl::sum (magicl:map #'abs vel))))
-
-(defun find-max-cfl (sim)
-  (with-accessors ((mesh cl-mpm:sim-mesh)
-                   (mps cl-mpm:sim-mps)
-                   (dt cl-mpm:sim-dt))
-      sim
-    (let ((max-v (lparallel:preduce #'max
-                                    (lparallel:pmapcar #'max-v-sum
-                                                    mps))))
-      (* dt (/ max-v (cl-mpm/mesh:mesh-resolution mesh))))))
-
-(defun pescribe-velocity (sim load-mps vel)
-  (let ((mps (cl-mpm:sim-mps sim)))
-    (loop for mp in load-mps
-          do
-             (progn
-               (loop for v in vel
-                     for i from 0
-                     do
-                     (when v
-                       (setf (magicl:tref (cl-mpm/particle:mp-velocity mp) i 0) v)
-                       )
-                     )))))
-(defun increase-load (sim load-mps amount)
-  (loop for mp in load-mps
-        do (with-accessors ((pos cl-mpm/particle:mp-position)
-                            (force cl-mpm/particle:mp-body-force)) mp
-             ;(incf (magicl:tref force 0 0) amount)
-             (magicl:.+ force amount force)
-             )))
 
 (defun length-from-def (sim mp dim)
   (let* ((mp-scale 2)
@@ -100,7 +66,7 @@
           collect (/ (cl-mpm/particle:mp-mass mp) (cl-mpm/particle:mp-volume mp)) into density
           ;; collect (cl-mpm/particle:mp-volume mp) into density
           collect (max-stress mp) into stress-y
-          collect (local-dist sim mp) into dist
+          collect 0d0 into dist
           finally (return (values x y c stress-y lx ly e density temp vx ybar dist)))
 
     (let* ((node-x '())
@@ -334,7 +300,8 @@
                                         ;'cl-mpm/damage::mpm-sim-damage
                                         ;; 'cl-mpm::mpm-sim-usf
                                         ;; 'mpm-sim-debug-g2p
-                                        'mpm-sim-debug-stress
+                                        'cl-mpm/mpi::mpm-sim-mpi-stress
+                                        ;; 'mpm-sim-debug-stress
                                         ))
 
          (h (cl-mpm/mesh:mesh-resolution (cl-mpm:sim-mesh sim)))
@@ -494,8 +461,8 @@
   (defparameter *x-pos* '())
   (defparameter *cfl-max* '())
   (defparameter *sim-step* 0)
-  )
-(defparameter *water-height* 0d0)
+  (defparameter *water-height* 0d0)
+  ))
 
 
 (defparameter *run-sim* nil)
@@ -561,10 +528,10 @@
                          (setf substeps substeps-e))
                          )
                      (incf *sim-step*)
-                     (plot *sim*)
-                     (vgplot:print-plot (merge-pathnames (format nil "outframes/frame_~5,'0d.png" *sim-step*))
-                                        :terminal "png size 1920,1080"
-                                        )
+                     ;; (plot *sim*)
+                     ;; (vgplot:print-plot (merge-pathnames (format nil "outframes/frame_~5,'0d.png" *sim-step*))
+                     ;;                    :terminal "png size 1920,1080"
+                     ;;                    )
                      (sleep .01)
                      ))))
   (cl-mpm/output:save-vtk (merge-pathnames (format nil "output/sim_~5,'0d.vtk" *sim-step*)) *sim*)
