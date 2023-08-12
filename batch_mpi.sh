@@ -5,10 +5,10 @@
 #SBATCH --mem=16G      # 1 GB RAM
 #SBATCH -p shared
 
-#SBATCH -n 3                    # number of MPI ranks
+#SBATCH -n 2                    # number of MPI ranks
 #SBATCH -c 16                   # number of threads per rank (one thread per CPU core)
 #SBATCH --ntasks-per-socket=1   # number of MPI ranks per CPU socket
-#SBATCH -N 3                    # number of compute nodes. 
+#SBATCH -N 2                    # number of compute nodes. 
 
 module load gcc
 module load intelmpi

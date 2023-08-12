@@ -1,7 +1,7 @@
 (require 'sb-simd)
 (format t "Hello test file~%")
 (ql:quickload :cl-mpm/examples/slump)
-(in-package :cl-mpm/examples/slump)
+;(in-package :cl-mpm/examples/slump)
 
 (sb-ext:restrict-compiler-policy 'speed  3 3)
 (sb-ext:restrict-compiler-policy 'debug  0 0)
@@ -290,6 +290,7 @@
 ;;                             )))))
 ;;       ))
 
+(declaim (notinline setup))
 (declaim (notinline setup-test-column))
 (defun setup-test-column (size block-size block-offset slope &optional (e-scale 1d0) (mp-scale 1d0)
                           &rest mp-args)
@@ -430,8 +431,8 @@
 (defun setup ()
   (declare (optimize (speed 0)))
   (defparameter *run-sim* nil)
-  (let* ((mesh-size 5)
-         (mps-per-cell 4)
+  (let* ((mesh-size 10)
+         (mps-per-cell 2)
          (slope -0.02)
          (shelf-height 400)
          (shelf-aspect 12)
@@ -449,6 +450,7 @@
                          slope
                          (/ 1 mesh-size) mps-per-cell))
 
+    (format t "Type of sim ~a~%" (type-of *sim*))
     ;;Delete all the plotted frames
     (loop for f in (uiop:directory-files (uiop:merge-pathnames* "./outframes/")) do (uiop:delete-file-if-exists f))
 
@@ -537,12 +539,29 @@
   (cl-mpm/output:save-vtk (merge-pathnames (format nil "output/sim_~5,'0d.vtk" *sim-step*)) *sim*)
   )
 
+(defmacro time-form (it form)
+  `(progn
+     (declaim (optimize speed))
+     (let* ((iterations ,it)
+            (start (get-internal-real-time)))
+       (dotimes (i ,it)
+         ,form)
+       (let* ((end (get-internal-real-time))
+              (units internal-time-units-per-second)
+              (dt (/ (- end start) (* iterations units)))
+              )
+         (format t "Total time: ~f ~%" (/ (- end start) units)) (format t "Time per iteration: ~f~%" (/ (- end start) (* iterations units)))
+         (format t "Throughput: ~f~%" (/ 1 dt))
+         dt))))
 
+
+(declaim (notinline mpi-run))
 (defun mpi-run (total-rank-count)
   (setf lparallel:*kernel* (lparallel:make-kernel 16 :name "custom-kernel"))
   (format t "Collecting servers~%")
-  (when (> total-rank-count 0)
-    (cl-mpm/mpi::collect-servers total-rank-count))
+  ;(when (> total-rank-count 0)
+  (cl-mpm/mpi::collect-servers total-rank-count)
+    ;)
   (lfarm:broadcast-task (lambda ()
     (progn
     (setf lparallel:*kernel* (lparallel:make-kernel 16))
@@ -550,8 +569,12 @@
     t)))
   (format t "Setup ~%")
   (setup)
+  (format t "Sim type ~A~%" (type-of *sim*))
   (format t "Run ~%")
-  (run)
+  ;(run)
+  (time-form 100
+	(cl-mpm::update-sim *sim*))
+  (format t "Kill servers ~%")
   (cl-mpm/mpi::kill-servers)
   )
 
