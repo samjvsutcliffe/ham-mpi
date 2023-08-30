@@ -17,9 +17,9 @@ module load aocl
 echo "Running code"
 rm output/*
 
-#sbcl --dynamic-space-size 16000  --disable-debugger --load "build_step.lisp" --quit
+sbcl --dynamic-space-size 16000  --disable-debugger --load "build_step.lisp" --quit
 
-#cp ~/quicklisp/local-projects/cl-mpm-worker/mpi-worker ./
+cp ~/quicklisp/local-projects/cl-mpm-worker/mpi-worker ./
 
 #echo $OMP_NUM_THREADS
 mpirun ./mpi-worker --dynamic-space-size 16000
