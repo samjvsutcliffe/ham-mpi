@@ -436,23 +436,24 @@
 
 (defun mpi-main-loop ()
   (let ((rank (cl-mpi:mpi-comm-rank)))
-    (setf lparallel:*kernel* (lparallel:make-kernel 16 :name "custom-kernel"))
+    (setf lparallel:*kernel* (lparallel:make-kernel 2 :name "custom-kernel"))
     (format t "Setup~%")
     (setup 'cl-mpm/mpi::mpm-sim-mpi-stress)
     (format t "Decompose~%")
     (cl-mpm/mpi::domain-decompose *sim*)
     (format t "Sim MPs: ~a~%" (length (cl-mpm:sim-mps *sim*)))
     (format t "Run~%")
-    (cl-mpm/mpi::exchange-mps *sim*)
-    ;; (dotimes (step 4)
-    ;;   (format t "rank ~D - Update step ~D~%" rank step)
-    ;;   (dotimes (i 1)
-    ;;     (cl-mpm::update-sim *sim*))
-    ;;   (incf *sim-step*)
-    ;;   (cl-mpm/output:save-vtk (merge-pathnames (format nil
-    ;;                                     "output/sim_rank_~2,'0d_~5,'0d.vtk" rank *sim-step* 
-    ;;                                                    )) *sim*)
-    ;;   )
+    ;; (cl-mpm/mpi::exchange-mps *sim*)
+    (dotimes (step 4)
+      (when (= rank 0)
+        (format t "Update step ~D~%" step))
+      (dotimes (i 1)
+        (cl-mpm::update-sim *sim*))
+      (incf *sim-step*)
+      (cl-mpm/output:save-vtk (merge-pathnames (format nil
+                                        "output/sim_rank_~2,'0d_~5,'0d.vtk" rank *sim-step* 
+                                                       )) *sim*)
+      )
     (format t "rank: ~D Finished~%" rank))
   )
 
@@ -500,4 +501,4 @@
   (cl-mpm/mpi::kill-servers)
   0
   )
-(mpi-main-loop)
+ (mpi-main-loop)
