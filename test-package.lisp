@@ -247,7 +247,7 @@
        (let* ((terminus-size (+ (second block-size) (* slope (first block-size))))
               (ocean-x 1000)
              (ocean-y (+ h-y (* 0.90d0 0.6d0 terminus-size)))
-             (angle -1d0)
+             (angle 0d0)
              )
 
       ;;   (loop for mp across (cl-mpm:sim-mps sim)
@@ -270,8 +270,9 @@
          (defparameter *floor-bc*
            (cl-mpm/penalty::make-bc-penalty-point-normal
             sim
-            (magicl:from-list (list (sin (- (* pi (/ angle 180d0))))
-                                    (cos (+ (* pi (/ angle 180d0))))) '(2 1))
+            (cl-mpm/utils:vector-from-list '(0d0 1d0))
+            ;; (magicl:from-list (list (sin (- (* pi (/ angle 180d0))))
+            ;;                         (cos (+ (* pi (/ angle 180d0))))) '(2 1))
             (magicl:from-list (list 00d0 (+ 1d0 h-y)) '(2 1))
             (* *ice-density* 1d3)
             0.9d0
@@ -369,9 +370,9 @@
     ;(vgplot:close-all-plots)
     ;(vgplot:figure)
   (sleep 1)
- (let* ((target-time 1d3)
+ (let* ((target-time 1d2)
          (dt (cl-mpm:sim-dt *sim*))
-         (dt-scale 1d0)
+         (dt-scale 0.1d0)
          (substeps (floor target-time dt))
         (rank (cl-mpi::mpi-comm-rank)))
 
@@ -379,7 +380,7 @@
     (let* ((dt-e (* dt-scale (cl-mpm::calculate-min-dt *sim*)))
            (substeps-e (floor target-time dt-e)))
       (format t "CFL dt estimate: ~f~%" dt-e)
-    (format t "Estimated dt ~f~%" (cl-mpm:sim-dt *sim*))
+      ;; (format t "Estimated dt ~f~%" (cl-mpm:sim-dt *sim*))
       (format t "CFL step count estimate: ~D~%" substeps-e)
       (setf (cl-mpm:sim-dt *sim*) dt-e)
       (setf substeps substeps-e))
