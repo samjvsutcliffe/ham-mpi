@@ -306,7 +306,7 @@
 (defun setup (sim-type)
   (declare (optimize (speed 0)))
   (defparameter *run-sim* nil)
-  (let* ((mesh-size 50)
+  (let* ((mesh-size 20)
          (mps-per-cell 2)
          (slope -0.02)
          (shelf-height 400)
@@ -436,28 +436,43 @@
 
 (defun mpi-main-loop ()
   (let ((rank (cl-mpi:mpi-comm-rank)))
-    (setf lparallel:*kernel* (lparallel:make-kernel 2 :name "custom-kernel"))
+    (setf lparallel:*kernel* (lparallel:make-kernel 16 :name "custom-kernel"))
+    (format t "Test kernel~%")
+    (time 
+      (lparallel:pdotimes (i 100000)
+                         (loop for j from 0 to 100000
+                               do 
+                               (sqrt i))))
     (format t "Setup~%")
     (setup 'cl-mpm/mpi::mpm-sim-mpi-stress)
-    (format t "Decompose~%")
-    (cl-mpm/mpi::domain-decompose *sim*)
-    (format t "Sim MPs: ~a~%" (length (cl-mpm:sim-mps *sim*)))
-    (format t "Run~%")
-    ;; (cl-mpm/mpi::exchange-mps *sim*)
-    ;; (time
-    ;;  (cl-mpm/mpi::exchange-mps *sim*))
-    (dotimes (step 4)
-      (when (= rank 0)
-        (format t "Update step ~D~%" step))
-      (dotimes (i 100)
-        (cl-mpm::update-sim *sim*))
+    (setf (cl-mpm::sim-dt *sim*) 1d1)
+    (let* ((target-time 1d2)
+           (dt-scale 1d0)
+           (substeps (floor target-time (cl-mpm::sim-dt *sim*))))
+      ;(cl-mpm::update-sim *sim*)
+      ;(time (let* ((dt-e (* dt-scale (cl-mpm::calculate-min-dt *sim*)))
+      ;             (substeps-e (floor target-time dt-e)))
+      (format t "CFL dt estimate: ~f~%" dt)
+      (format t "CFL step count estimate: ~D~%" substeps)
+      ;        (setf (cl-mpm:sim-dt *sim*) dt-e)
+      ;        (setf substeps substeps-e))
+      ;      )
 
+      (format t "Decompose~%")
+      (cl-mpm/mpi::domain-decompose *sim*)
+      (format t "Sim MPs: ~a~%" (length (cl-mpm:sim-mps *sim*)))
+      (format t "Run~%")
 
-      (incf *sim-step*)
-      (cl-mpm/output:save-vtk (merge-pathnames (format nil
-                                        "output/sim_rank_~2,'0d_~5,'0d.vtk" rank *sim-step* 
-                                                       )) *sim*)
-      )
+      (dotimes (step 100)
+        (when (= rank 0)
+          (format t "Update step ~D~%" step))
+        (time (dotimes (i substeps)
+                (cl-mpm::update-sim *sim*)))
+        (incf *sim-step*)
+        (cl-mpm/output:save-vtk (merge-pathnames (format nil
+                                                         "output/sim_rank_~2,'0d_~5,'0d.vtk" rank *sim-step* 
+                                                         )) *sim*)
+        ))
     (format t "rank: ~D Finished~%" rank))
   )
 
