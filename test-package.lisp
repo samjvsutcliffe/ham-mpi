@@ -1,7 +1,7 @@
 (format t "Hello test file~%")
-(sb-ext:restrict-compiler-policy 'speed  3 3)
-(sb-ext:restrict-compiler-policy 'debug  0 0)
-(sb-ext:restrict-compiler-policy 'safety 0 0)
+(sb-ext:restrict-compiler-policy 'speed  0 0)
+(sb-ext:restrict-compiler-policy 'debug  3 3)
+(sb-ext:restrict-compiler-policy 'safety 3 3)
 (ql:quickload :cl-mpi :silent t)
 (ql:quickload :cl-mpm :silent t)
 (ql:quickload :cl-mpm/setup :silent t)
@@ -244,11 +244,11 @@
              ))
 
       ;; (format t "Bottom level ~F~%" h-y)
-      ;; (let* ((terminus-size (+ (second block-size) (* slope (first block-size))))
-      ;;        (ocean-x 1000)
-      ;;       (ocean-y (+ h-y (* 0.90d0 0.6d0 terminus-size)))
-      ;;       ;(angle -1d0)
-      ;;       )
+       (let* ((terminus-size (+ (second block-size) (* slope (first block-size))))
+              (ocean-x 1000)
+             (ocean-y (+ h-y (* 0.90d0 0.6d0 terminus-size)))
+             (angle -1d0)
+             )
 
       ;;   (loop for mp across (cl-mpm:sim-mps sim)
       ;;         do
@@ -267,29 +267,29 @@
 
       ;;   (format t "Ocean level ~a~%" ocean-y)
       ;;   (defparameter *water-height* ocean-y)
-      ;;   (defparameter *floor-bc*
-      ;;     (cl-mpm/penalty::make-bc-penalty-point-normal
-      ;;      sim
-      ;;      (magicl:from-list (list (sin (- (* pi (/ angle 180d0))))
-      ;;                              (cos (+ (* pi (/ angle 180d0))))) '(2 1))
-      ;;      (magicl:from-list (list 00d0 (+ 1d0 h-y)) '(2 1))
-      ;;      (* *ice-density* 1d3)
-      ;;      0.9d0
-      ;;      ))
-      ;;   (setf (cl-mpm::sim-bcs-force-list sim)
-      ;;         (list
-      ;;          (cl-mpm/bc:make-bcs-from-list
-      ;;           (list
-      ;;            (cl-mpm/buoyancy::make-bc-buoyancy
-      ;;             sim
-      ;;             ocean-y
-      ;;             *water-density*
-      ;;             )
-      ;;            ))
-      ;;          (cl-mpm/bc:make-bcs-from-list
-      ;;           (list *floor-bc*)
-      ;;           )))
-      ;;   )
+         (defparameter *floor-bc*
+           (cl-mpm/penalty::make-bc-penalty-point-normal
+            sim
+            (magicl:from-list (list (sin (- (* pi (/ angle 180d0))))
+                                    (cos (+ (* pi (/ angle 180d0))))) '(2 1))
+            (magicl:from-list (list 00d0 (* 1d0 h-y)) '(2 1))
+            (* *ice-density* 1d3)
+            0.9d0
+            ))
+         (setf (cl-mpm::sim-bcs-force-list sim)
+               (list
+                ;(cl-mpm/bc:make-bcs-from-list
+                ; (list
+                ;  (cl-mpm/buoyancy::make-bc-buoyancy
+                ;   sim
+                ;   ocean-y
+                ;   *water-density*
+                ;   )
+                ;  ))
+                (cl-mpm/bc:make-bcs-from-list
+                 (list *floor-bc*)
+                 )))
+         )
       ;; (let ((normal (magicl:from-list (list (sin (- (* pi (/ angle 180d0))))
       ;;                                       (cos (+ (* pi (/ angle 180d0))))) '(2 1))))
       ;;   (defparameter *sliding-slope* (/ (- (magicl:tref normal 0 0))
@@ -306,7 +306,7 @@
 (defun setup (sim-type)
   (declare (optimize (speed 0)))
   (defparameter *run-sim* nil)
-  (let* ((mesh-size 20)
+  (let* ((mesh-size 50)
          (mps-per-cell 2)
          (slope -0.02)
          (shelf-height 400)
@@ -379,6 +379,7 @@
     (let* ((dt-e (* dt-scale (cl-mpm::calculate-min-dt *sim*)))
            (substeps-e (floor target-time dt-e)))
       (format t "CFL dt estimate: ~f~%" dt-e)
+    (format t "Estimated dt ~f~%" (cl-mpm:sim-dt *sim*))
       (format t "CFL step count estimate: ~D~%" substeps-e)
       (setf (cl-mpm:sim-dt *sim*) dt-e)
       (setf substeps substeps-e))
@@ -446,17 +447,19 @@
     (format t "Setup~%")
     (setup 'cl-mpm/mpi::mpm-sim-mpi-stress)
     (setf (cl-mpm::sim-dt *sim*) 1d1)
-    (let* ((target-time 1d2)
+    (let* ((target-time 1d3)
            (dt-scale 1d0)
            (substeps (floor target-time (cl-mpm::sim-dt *sim*))))
       ;(cl-mpm::update-sim *sim*)
       ;(time (let* ((dt-e (* dt-scale (cl-mpm::calculate-min-dt *sim*)))
       ;             (substeps-e (floor target-time dt-e)))
-      (format t "CFL dt estimate: ~f~%" dt)
+      (format t "CFL dt estimate: ~f~%" (cl-mpm::sim-dt *sim*))
       (format t "CFL step count estimate: ~D~%" substeps)
       ;        (setf (cl-mpm:sim-dt *sim*) dt-e)
       ;        (setf substeps substeps-e))
       ;      )
+      (when (= rank 0)
+        (cl-mpm/output:save-vtk-mesh (merge-pathnames "output/mesh.vtk") *sim*))
 
       (format t "Decompose~%")
       (cl-mpm/mpi::domain-decompose *sim*)
@@ -466,6 +469,10 @@
       (dotimes (step 100)
         (when (= rank 0)
           (format t "Update step ~D~%" step))
+         ;(if (> step 3)
+         ;    (progn (setf (cl-mpm::sim-enable-damage *sim*) t))
+         ;    (progn (setf (cl-mpm::sim-enable-damage *sim*) nil)))
+
         (time (dotimes (i substeps)
                 (cl-mpm::update-sim *sim*)))
         (incf *sim-step*)
