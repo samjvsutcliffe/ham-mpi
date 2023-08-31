@@ -23,7 +23,7 @@
 ;; (defun cl-mpi::mpi-comm-rank ()
 ;;   0)
 ;; (defun cl-mpi::mpi-comm-size ()
-;;   2)
+;;   4)
 
 
 
@@ -444,11 +444,15 @@
     (format t "Sim MPs: ~a~%" (length (cl-mpm:sim-mps *sim*)))
     (format t "Run~%")
     ;; (cl-mpm/mpi::exchange-mps *sim*)
+    ;; (time
+    ;;  (cl-mpm/mpi::exchange-mps *sim*))
     (dotimes (step 4)
       (when (= rank 0)
         (format t "Update step ~D~%" step))
-      (dotimes (i 1)
+      (dotimes (i 100)
         (cl-mpm::update-sim *sim*))
+
+
       (incf *sim-step*)
       (cl-mpm/output:save-vtk (merge-pathnames (format nil
                                         "output/sim_rank_~2,'0d_~5,'0d.vtk" rank *sim-step* 
